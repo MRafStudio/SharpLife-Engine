@@ -15,6 +15,7 @@
 
 using SharpLife.Engine.Entities;
 using SharpLife.Engine.Entities.Components;
+using SharpLife.Engine.Models.BSP;
 using SharpLife.Engine.Models.BSP.FileFormat;
 using SharpLife.Engine.ObjectEditor;
 using System;
@@ -135,6 +136,18 @@ namespace SharpLife.Engine.Physics
             if (Renderable?.Model == null)
             {
                 EntitySystem.Scene.Logger.Warning("Missing model for {Class} ({Entity}) collider", Entity.ClassName, Entity);
+            }
+
+            //Entities that use a model (brush models especially) take their bounding box from the
+            //model. Brush model bounds are in world space, and their origin is usually (0,0,0), so
+            //without this AbsMin/AbsMax are just the origin: the entity is linked into the area node
+            //at the map origin and traces next to the actual geometry never find it, which makes
+            //doors, buttons and func_wall brushes walk-through.
+            if (Renderable?.Model is BSPModel brushModel)
+            {
+                //SetSize also relinks the collider, which recomputes AbsMin/AbsMax. Assigning
+                //Mins/Maxs directly would leave the old (empty) bounding box in place.
+                SetSize(brushModel.Mins, brushModel.Maxs);
             }
         }
 

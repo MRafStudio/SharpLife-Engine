@@ -262,7 +262,7 @@ namespace SharpLife.Engine.Physics
                 offset = result.ClipMins - mins;
             }
 
-            offset += ent.Transform.Origin;
+            offset += ent.Transform.AbsoluteOriginNoRelink();
 
             return result;
         }
@@ -418,7 +418,7 @@ namespace SharpLife.Engine.Physics
                 {
                     var hull = HullForBsp(touched, ent.Mins, ent.Maxs, out var offset);
 
-                    var localPosition = ent.Transform.Origin - offset;
+                    var localPosition = ent.Transform.AbsoluteOriginNoRelink() - offset;
 
                     if (HullPointContents(hull, hull.FirstClipNode, ref localPosition) != Contents.Solid)
                     {
@@ -603,7 +603,7 @@ namespace SharpLife.Engine.Physics
             box_planes[4].Distance = ent.Maxs.Z - mins.Z;
             box_planes[5].Distance = ent.Mins.Z - maxs.Z;
 
-            offset = ent.Transform.Origin;
+            offset = ent.Transform.AbsoluteOriginNoRelink();
 
             return box_hull;
         }
@@ -660,7 +660,7 @@ namespace SharpLife.Engine.Physics
                         studioRenderable.Frame,
                         (int)studioRenderable.Sequence,
                         angles,
-                        collider.Transform.Origin,
+                        collider.Transform.AbsoluteOriginNoRelink(),
                         size,
                         _studioHullControllers,
                         _studioHullBlenders,
@@ -674,7 +674,7 @@ namespace SharpLife.Engine.Physics
                         studioRenderable.Frame,
                         (int)studioRenderable.Sequence,
                         collider.Transform.Angles,
-                        collider.Transform.Origin,
+                        collider.Transform.AbsoluteOriginNoRelink(),
                         size,
                         studioRenderable.Controllers,
                         studioRenderable.Blenders,
@@ -992,7 +992,7 @@ namespace SharpLife.Engine.Physics
                 fSphereRadiusSquared += value * value;
             }
 
-            return DoesSphereIntersect(ent.Transform.Origin, fSphereRadiusSquared, traceOrg, traceDir);
+            return DoesSphereIntersect(ent.Transform.AbsoluteOriginNoRelink(), fSphereRadiusSquared, traceOrg, traceDir);
         }
 
         private void ClipToLinks(AreaNode node, ref MoveClip clip)
@@ -1045,7 +1045,7 @@ namespace SharpLife.Engine.Physics
 
                 if (clip.BoxMins.X > pEntity.AbsMax.X
                     || clip.BoxMins.Y > pEntity.AbsMax.Y
-                    || clip.BoxMins.Z < pEntity.AbsMax.Z
+                    || clip.BoxMins.Z > pEntity.AbsMax.Z
                     || pEntity.AbsMin.X > clip.BoxMaxs.X
                     || pEntity.AbsMin.Y > clip.BoxMaxs.Y
                     || pEntity.AbsMin.Z > clip.BoxMaxs.Z)
