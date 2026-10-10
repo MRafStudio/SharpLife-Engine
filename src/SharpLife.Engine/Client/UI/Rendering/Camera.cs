@@ -15,6 +15,8 @@
 
 using ImGuiNET;
 using SDL2;
+using SharpLife.Engine.Entities;
+using SharpLife.Engine.Entities.Components;
 using SharpLife.Input;
 using System;
 using System.Numerics;
@@ -44,6 +46,11 @@ namespace SharpLife.Engine.Client.UI.Rendering
         private float _pitch;
 
         private Vector2 _previousMousePos;
+        /// <summary>
+        /// Provides the entity scene to look for a player entity to follow and control
+        /// </summary>
+        public Func<SharpLife.Engine.Entities.Scene> WorldSceneProvider { get; set; }
+
         private IInputSystem _inputSystem;
         private GraphicsDevice _gd;
         private bool _useReverseDepth;
@@ -99,6 +106,12 @@ namespace SharpLife.Engine.Client.UI.Rendering
 
         public void Update(float deltaSeconds)
         {
+            //If a player entity exists, follow and drive it instead of using the free camera
+            if (UpdatePlayer(deltaSeconds))
+            {
+                return;
+            }
+
             float sprintFactor = _inputSystem.Snapshot.IsKeyDown(SDL.SDL_Keycode.SDLK_LCTRL)
                 ? 0.1f
                 : _inputSystem.Snapshot.IsKeyDown(SDL.SDL_Keycode.SDLK_LSHIFT)
@@ -151,6 +164,80 @@ namespace SharpLife.Engine.Client.UI.Rendering
 
                 UpdateViewMatrix();
             }
+        }
+
+        /// <summary>
+        /// Finds the local player entity in the world, if any
+        /// </summary>
+        private PlayerController FindLocalPlayer()
+        {
+            var world = WorldSceneProvider?.Invoke();
+
+            if (world == null || !world.Running)
+            {
+                return null;
+            }
+
+            foreach (var entity in world.Entities.EnumerateAll())
+            {
+                var controller = entity.GetComponent<PlayerController>(true);
+
+                if (controller != null)
+                {
+                    return controller;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Follows and controls the local player. Returns false if there is no player to control.
+        /// </summary>
+        private bool UpdatePlayer(float deltaSeconds)
+        {
+            var player = FindLocalPlayer();
+
+            if (player == null)
+            {
+                return false;
+            }
+
+            var world = WorldSceneProvider();
+
+            //Mouse look, only while a mouse button is held down so the cursor stays usable
+            var mouseDelta = _inputSystem.Snapshot.MousePosition - _previousMousePos;
+            _previousMousePos = _inputSystem.Snapshot.MousePosition;
+
+            if (!ImGui.IsWindowHovered(ImGuiHoveredFlags.AnyWindow)
+                && !ImGui.GetIO().WantCaptureMouse
+                && (_inputSystem.Snapshot.IsMouseDown(MouseButton.Left) || _inputSystem.Snapshot.IsMouseDown(MouseButton.Right)))
+            {
+                _yaw += mouseDelta.X * 0.01f;
+                _pitch = Math.Clamp(_pitch + mouseDelta.Y * 0.01f, MinPitch, MaxPitch);
+            }
+
+            float forwardMove = 0;
+            float sideMove = 0;
+
+            if (_inputSystem.Snapshot.IsKeyDown(SDL.SDL_Keycode.SDLK_w)) forwardMove += 1;
+            if (_inputSystem.Snapshot.IsKeyDown(SDL.SDL_Keycode.SDLK_s)) forwardMove -= 1;
+            if (_inputSystem.Snapshot.IsKeyDown(SDL.SDL_Keycode.SDLK_d)) sideMove += 1;
+            if (_inputSystem.Snapshot.IsKeyDown(SDL.SDL_Keycode.SDLK_a)) sideMove -= 1;
+
+            var jump = _inputSystem.Snapshot.IsKeyDown(SDL.SDL_Keycode.SDLK_SPACE);
+
+            //GoldSource: X is forward and Y is left, so "right" is the forward vector rotated by -90 degrees
+            var forward = new Vector3((float)Math.Cos(_yaw), (float)Math.Sin(_yaw), 0);
+            var right = new Vector3(forward.Y, -forward.X, 0);
+
+            player.Move(world, deltaSeconds, forward, right, forwardMove, sideMove, jump);
+
+            _position = player.EyePosition;
+
+            UpdateViewMatrix();
+
+            return true;
         }
 
         public void WindowResized(float width, float height)

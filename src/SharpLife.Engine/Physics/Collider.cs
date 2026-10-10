@@ -132,7 +132,7 @@ namespace SharpLife.Engine.Physics
         public void Activate()
         {
             //This is tested now because Initialize happens before entity initialization
-            if (Renderable.Model == null)
+            if (Renderable?.Model == null)
             {
                 EntitySystem.Scene.Logger.Warning($"Missing model for {nameof(Collider)}");
             }

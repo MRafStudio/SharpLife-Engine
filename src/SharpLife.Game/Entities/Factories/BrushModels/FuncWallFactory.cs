@@ -57,6 +57,12 @@ namespace SharpLife.Game.Entities.Factories.BrushModels
                 return false;
             }
 
+            //Brush entities block movement. Without this they don't collide at all and
+            //players walk through walls and fall through floors made of brush models.
+            var collider = entity.GetComponent<Collider>();
+            collider.Solid = Solid.BSP;
+            collider.MoveType = MoveType.Push;
+
             return true;
         }
     }

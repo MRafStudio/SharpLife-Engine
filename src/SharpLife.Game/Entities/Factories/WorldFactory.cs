@@ -56,6 +56,12 @@ namespace SharpLife.Game.Entities.Factories
 
             bspRenderable.BSPModel = creator.Scene.WorldState.MapInfo.Model;
 
+            //The world must be a BSP collider, otherwise tracing falls back to a bounding box
+            //and players and entities fall through the map geometry.
+            var collider = entity.GetComponent<Collider>();
+            collider.Solid = Solid.BSP;
+            collider.MoveType = MoveType.Push;
+
             return true;
         }
     }

@@ -224,7 +224,7 @@ namespace SharpLife.Engine.Physics
 
         private Hull HullForBsp(Collider ent, in Vector3 mins, in Vector3 maxs, out Vector3 offset)
         {
-            var model = ent.Renderable.Model;
+            var model = ent.Renderable?.Model;
 
             if (model == null)
             {
@@ -459,6 +459,17 @@ namespace SharpLife.Engine.Physics
         {
             UnlinkEdict(ent);
 
+            //Compute the absolute bounding box. The area node search below and touches rely on it,
+            //and entities without a model (e.g. the player) never had it computed before.
+            //Note: can't use Transform.Origin here, its getter relinks the collider and would recurse.
+            if (ent.Transform != null)
+            {
+                var origin = ent.Transform.AbsoluteOriginNoRelink();
+
+                ent.AbsMin = origin + ent.Mins - Vector3.One;
+                ent.AbsMax = origin + ent.Maxs + Vector3.One;
+            }
+
             if (!ent.Entity.IsWorld() && !ent.Entity.Destroyed)
             {
                 //TODO: should avoid doing this
@@ -475,7 +486,7 @@ namespace SharpLife.Engine.Physics
                 {
                     ent.ClearNodeState();
 
-                    if (ent.Renderable.Model != null)
+                    if (ent.Renderable?.Model != null)
                     {
                         int topNode = -1;
 
@@ -490,7 +501,7 @@ namespace SharpLife.Engine.Physics
 
                 if (ent.Solid != Solid.Not)
                 {
-                    if (ent.Solid == Solid.BSP && ent.Renderable.Model == null)
+                    if (ent.Solid == Solid.BSP && ent.Renderable?.Model == null)
                     {
                         _logger.Debug($"Inserted {ent.Entity.ClassName} with no model");
                         return;

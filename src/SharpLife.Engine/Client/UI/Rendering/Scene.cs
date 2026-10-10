@@ -90,6 +90,9 @@ namespace SharpLife.Engine.Client.UI.Rendering
         internal Scene(EngineClient client, IInputSystem inputSystem, ICommandContext commandContext, GraphicsDevice gd, int viewWidth, int viewHeight)
         {
             Camera = new Camera(inputSystem, gd, viewWidth, viewHeight);
+
+            //The camera follows the local player when one is spawned
+            Camera.WorldSceneProvider = () => client.Engine.World.Scene;
             _updateables.Add(Camera);
 
             if (commandContext == null)

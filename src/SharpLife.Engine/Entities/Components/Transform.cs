@@ -219,15 +219,30 @@ namespace SharpLife.Engine.Entities.Components
             }
         }
 
-        private Vector3 ComputeAbsoluteOrigin()
+        /// <summary>
+        /// Returns the absolute origin without relinking the collider.
+        /// <remarks>
+        /// ComputeAbsoluteOrigin relinks the entity's collider through its OriginChanged handler,
+        /// so code that runs while an entity is being linked (which needs the origin) must use this
+        /// instead, otherwise linking recurses into itself until the stack overflows.
+        /// </remarks>
+        /// </summary>
+        public Vector3 AbsoluteOriginNoRelink()
         {
-            //TODO: if origin changes, relink entity
             var origin = RelativeOrigin;
 
             if (_parent != null)
             {
-                origin += _parent.Origin;
+                origin += _parent.AbsoluteOriginNoRelink();
             }
+
+            return origin;
+        }
+
+        private Vector3 ComputeAbsoluteOrigin()
+        {
+            //TODO: if origin changes, relink entity
+            var origin = AbsoluteOriginNoRelink();
 
             _collider?.OriginChanged();
 

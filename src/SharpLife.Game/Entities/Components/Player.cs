@@ -13,11 +13,183 @@
 *
 ****/
 
+using SharpLife.Engine.Entities;
 using SharpLife.Engine.Entities.Components;
+using SharpLife.Engine.Physics;
+using System.Numerics;
 
 namespace SharpLife.Game.Entities.Components
 {
-    public sealed class Player : Component
+    /// <summary>
+    /// The local player.
+    /// <remarks>
+    /// The engine has no full player physics yet, so this is a simple walk controller:
+    /// horizontal movement, gravity, jumping and collision handling using the engine's tracing code.
+    /// Movement follows GoldSource conventions (Z up, inputs relative to view yaw).
+    /// </remarks>
+    /// </summary>
+    public sealed class Player : PlayerController
     {
+        /// <summary>
+        /// GoldSource player hull
+        /// </summary>
+        public static readonly Vector3 HullMins = new Vector3(-16, -16, -36);
+
+        public static readonly Vector3 HullMaxs = new Vector3(16, 16, 36);
+
+        /// <summary>
+        /// Height of the eyes above the entity origin (VEC_VIEW in the SDK)
+        /// </summary>
+        public const float EyeHeight = 28f;
+
+        public float MoveSpeed = 320f;
+
+        public float JumpSpeed = 268f;
+
+        public float Gravity = 800f;
+
+        public Vector3 Velocity;
+
+        public bool OnGround;
+
+
+        public override Vector3 EyePosition
+        {
+            get
+            {
+                var transform = Entity.GetComponent<Transform>();
+
+                return (transform?.Origin ?? Vector3.Zero) + new Vector3(0, 0, EyeHeight);
+            }
+        }
+
+        public override void Move(Scene world, float deltaSeconds, in Vector3 forward, in Vector3 right, float forwardMove, float sideMove, bool jump)
+        {
+            var transform = Entity.GetComponent<Transform>();
+            var collider = Entity.GetComponent<Collider>();
+
+            if (world == null || transform == null || collider == null || deltaSeconds <= 0)
+            {
+                return;
+            }
+
+            var wishDirection = forward * forwardMove + right * sideMove;
+
+            if (wishDirection.LengthSquared() > 1f)
+            {
+                wishDirection = Vector3.Normalize(wishDirection);
+            }
+
+            //TODO: proper acceleration, friction and air control
+            Velocity.X = wishDirection.X * MoveSpeed;
+            Velocity.Y = wishDirection.Y * MoveSpeed;
+
+            if (OnGround)
+            {
+                if (jump)
+                {
+                    Velocity.Z = JumpSpeed;
+                    OnGround = false;
+                }
+                else if (Velocity.Z < 0)
+                {
+                    Velocity.Z = 0;
+                }
+            }
+            else
+            {
+                Velocity.Z -= Gravity * deltaSeconds;
+            }
+
+            var start = transform.Origin;
+
+            //Map spawn points sit on the floor, which leaves the player hull embedded in geometry
+            //(traces report StartSolid and the player falls through the world). Push the hull straight
+            //up until it's free, the same way the original engine unsticks players.
+            for (var attempt = 0; attempt < 24; ++attempt)
+            {
+                var test = world.Physics.Move(start, collider.Mins, collider.Maxs, start, TraceType.None, collider, false, false);
+
+                if (!test.StartSolid)
+                {
+                    break;
+                }
+
+                start.Z += 8.0f;
+            }
+
+            transform.Origin = start;
+
+            var end = start + Velocity * deltaSeconds;
+
+            var trace = world.Physics.Move(start, collider.Mins, collider.Maxs, end, TraceType.None, collider, false, false);
+
+            //Try to step over low obstacles (stairs, ledges) like the original engine does
+            if (trace.Fraction < 1.0f && Velocity.Z <= 0.0f)
+            {
+                const float stepSize = 18.0f;
+
+                var raisedStart = start + new Vector3(0, 0, stepSize);
+                var raisedTrace = world.Physics.Move(start, collider.Mins, collider.Maxs, raisedStart, TraceType.None, collider, false, false);
+
+                if (!raisedTrace.StartSolid)
+                {
+                    var forwardEnd = raisedTrace.EndPosition + (end - start);
+                    var forwardTrace = world.Physics.Move(raisedTrace.EndPosition, collider.Mins, collider.Maxs, forwardEnd, TraceType.None, collider, false, false);
+
+                    if (forwardTrace.Fraction > trace.Fraction)
+                    {
+                        var landEnd = forwardTrace.EndPosition - new Vector3(0, 0, stepSize);
+                        var landTrace = world.Physics.Move(forwardTrace.EndPosition, collider.Mins, collider.Maxs, landEnd, TraceType.None, collider, false, false);
+
+                        if (!landTrace.StartSolid && landTrace.Fraction > 0.0f)
+                        {
+                            trace = landTrace;
+                            trace.EndPosition = landTrace.EndPosition;
+                            OnGround = true;
+                            Velocity.Z = 0;
+                        }
+                    }
+                }
+            }
+
+            transform.Origin = trace.EndPosition;
+
+            if (trace.StartSolid || trace.Fraction < 1f)
+            {
+                var normal = trace.Plane.Normal;
+
+                //Remove the velocity component that pushes into the surface
+                var dot = Vector3.Dot(Velocity, normal);
+
+                if (dot < 0)
+                {
+                    Velocity -= normal * dot;
+                }
+
+                if (normal.Z > 0.7f && Velocity.Z <= 0)
+                {
+                    OnGround = true;
+                }
+            }
+
+            //Probe the ground so slopes and small steps are detected
+            var groundTrace = world.Physics.Move(transform.Origin, collider.Mins, collider.Maxs,
+                transform.Origin - new Vector3(0, 0, 2), TraceType.None, collider, false, false);
+
+            if (groundTrace.Fraction < 1f && groundTrace.Plane.Normal.Z >= 0.7f)
+            {
+                OnGround = true;
+
+                if (Velocity.Z < 0)
+                {
+                    Velocity.Z = 0;
+                }
+            }
+            else if (trace.Fraction == 1f && !OnGround)
+            {
+                OnGround = false;
+            }
+        }
     }
 }
