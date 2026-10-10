@@ -78,10 +78,8 @@ namespace SharpLife.Game.Entities.Factories.BrushModels
         }
     }
 
-    [LinkEntityToFactory(ClassName = "func_door")]
-    public sealed class FuncDoorFactory : BrushModelFactory
-    {
-    }
+    //func_door already has a factory of its own (Doors/FuncDoorFactory), which also sets up the
+    //door movement logic, so it is intentionally not registered here.
 
     [LinkEntityToFactory(ClassName = "func_door_rotating")]
     public sealed class FuncDoorRotatingFactory : BrushModelFactory
