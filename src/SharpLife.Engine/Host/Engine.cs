@@ -234,6 +234,10 @@ namespace SharpLife.Engine.Host
                 Logger.Information($"Exe: {BuildDate.ToString("HH:mm:ss MMM dd yyyy")}");
             }
 
+            //Nothing calls stuffcmds on startup, so commands passed on the command line (+commands)
+            //never run. Queue it now that all commands (including map) have been registered.
+            EngineContext.QueueCommands("stuffcmds");
+
             //TODO: initialize subsystems
         }
 

@@ -80,12 +80,13 @@ namespace SharpLife.Input
 
         public bool IsKeyDown(SDL.SDL_Keycode key)
         {
-            return Keys[key].Down;
+            //Keys not present in the enum are only added once they're used, so don't assume the key exists
+            return Keys.TryGetValue(key, out var state) && state.Down;
         }
 
         public KeyState GetKeyState(SDL.SDL_Keycode key)
         {
-            return Keys[key];
+            return Keys.TryGetValue(key, out var state) ? state : default;
         }
 
         public bool IsKeyPressed(SDL.SDL_Keycode key)

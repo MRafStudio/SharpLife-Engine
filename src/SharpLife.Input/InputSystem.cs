@@ -70,7 +70,12 @@ namespace SharpLife.Input
 
                         var key = sdlEvent.key.keysym.sym;
 
-                        var state = _privateSnapshot.Keys[key];
+                        //Not every keycode the SDL2 build reports is present in the SDL_Keycode enum,
+                        //so look it up safely and add it on demand instead of throwing
+                        if (!_privateSnapshot.Keys.TryGetValue(key, out var state))
+                        {
+                            state = new KeyState(key);
+                        }
 
                         state.Down = down;
                         state.Modifiers = sdlEvent.key.keysym.mod;
