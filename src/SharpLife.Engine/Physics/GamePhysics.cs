@@ -1050,7 +1050,12 @@ namespace SharpLife.Engine.Physics
                     continue;
                 }
 
-                if (pEntity.Solid != Solid.SlideBox && !CheckSphereIntersection(pEntity, clip.Start, clip.End))
+                //Sphere intersection only applies to animated client entities. Every other entity
+                //(brush models in particular) must always be traced against, otherwise walls
+                //and doors stop blocking movement.
+                if (pEntity.Solid != Solid.SlideBox
+                    && (pEntity.Entity.Flags & EntityFlags.Client) != 0
+                    && !CheckSphereIntersection(pEntity, clip.Start, clip.End))
                 {
                     continue;
                 }

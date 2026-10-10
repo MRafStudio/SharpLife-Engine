@@ -56,6 +56,8 @@ namespace SharpLife.Game.Entities.Components
 
         private bool _spawnUnstuckDone;
 
+        private float _nextLogTime;
+
 
         public override Vector3 EyePosition
         {
@@ -106,6 +108,15 @@ namespace SharpLife.Game.Entities.Components
             }
 
             var start = transform.Origin;
+
+            //TEMPORARY diagnostics: is Move even called, and what is the player state
+            if (world.Time.ElapsedTime >= _nextLogTime)
+            {
+                _nextLogTime = (float)world.Time.ElapsedTime + 1.0f;
+
+                world.Logger.Information("Player move: origin={Origin} velocity={Velocity} onGround={OnGround} engineTime={Time}",
+                    start, Velocity, OnGround, world.Time.ElapsedTime);
+            }
 
             //Falling out of the world is not handled yet (the engine has no triggers or fall damage),
             //so put the player back at the spawn point instead of falling forever.

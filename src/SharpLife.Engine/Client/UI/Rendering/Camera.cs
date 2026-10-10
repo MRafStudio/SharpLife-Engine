@@ -227,8 +227,20 @@ namespace SharpLife.Engine.Client.UI.Rendering
 
             var jump = _inputSystem.Snapshot.IsKeyDown(SDL.SDL_Keycode.SDLK_SPACE);
 
-            //GoldSource: X is forward and Y is left, so "right" is the forward vector rotated by -90 degrees
-            var forward = new Vector3((float)Math.Cos(_yaw), (float)Math.Sin(_yaw), 0);
+            //GoldSource: X is forward and Y is left, so "right" is the forward vector rotated by -90 degrees.
+            //Derive forward from the view matrix so movement always matches where the camera looks.
+            var look = Vector3.Transform(DefaultLookDirection, RotationMatrix);
+            var forward = new Vector3(look.X, look.Y, 0);
+
+            if (forward.LengthSquared() > 0.0001f)
+            {
+                forward = Vector3.Normalize(forward);
+            }
+            else
+            {
+                forward = Vector3.UnitX;
+            }
+
             var right = new Vector3(forward.Y, -forward.X, 0);
 
             player.Move(world, deltaSeconds, forward, right, forwardMove, sideMove, jump);
