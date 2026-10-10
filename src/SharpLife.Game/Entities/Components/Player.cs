@@ -52,6 +52,10 @@ namespace SharpLife.Game.Entities.Components
 
         public bool OnGround;
 
+        private Vector3? _spawnOrigin;
+
+        private bool _spawnUnstuckDone;
+
 
         public override Vector3 EyePosition
         {
@@ -103,22 +107,54 @@ namespace SharpLife.Game.Entities.Components
 
             var start = transform.Origin;
 
+            //Falling out of the world is not handled yet (the engine has no triggers or fall damage),
+            //so put the player back at the spawn point instead of falling forever.
+            var mapModel = world.WorldState.MapInfo?.Model;
+
+            if (mapModel != null && (start.Z < mapModel.Mins.Z - 512.0f || start.Z > mapModel.Maxs.Z + 512.0f))
+            {
+                if (_spawnOrigin == null)
+                {
+                    _spawnOrigin = start + new Vector3(0, 0, 512.0f);
+                }
+
+                transform.Origin = _spawnOrigin.Value;
+
+                Velocity = Vector3.Zero;
+
+                world.Logger.Information("Player fell out of the world, returning to spawn {Origin}", _spawnOrigin.Value);
+
+                return;
+            }
+
+            if (_spawnOrigin == null)
+            {
+                _spawnOrigin = start;
+            }
+
             //Map spawn points sit on the floor, which leaves the player hull embedded in geometry
             //(traces report StartSolid and the player falls through the world). Push the hull straight
             //up until it's free, the same way the original engine unsticks players.
-            for (var attempt = 0; attempt < 24; ++attempt)
+            //Only done once: outside the map every trace reports StartSolid, and lifting the player
+            //every frame would launch it straight up.
+            if (!_spawnUnstuckDone)
             {
-                var test = world.Physics.Move(start, collider.Mins, collider.Maxs, start, TraceType.None, collider, false, false);
-
-                if (!test.StartSolid)
+                for (var attempt = 0; attempt < 24; ++attempt)
                 {
-                    break;
+                    var test = world.Physics.Move(start, collider.Mins, collider.Maxs, start, TraceType.None, collider, false, false);
+
+                    if (!test.StartSolid)
+                    {
+                        break;
+                    }
+
+                    start.Z += 8.0f;
                 }
 
-                start.Z += 8.0f;
-            }
+                transform.Origin = start;
 
-            transform.Origin = start;
+                _spawnUnstuckDone = true;
+            }
 
             var end = start + Velocity * deltaSeconds;
 

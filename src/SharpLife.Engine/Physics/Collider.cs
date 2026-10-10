@@ -134,7 +134,7 @@ namespace SharpLife.Engine.Physics
             //This is tested now because Initialize happens before entity initialization
             if (Renderable?.Model == null)
             {
-                EntitySystem.Scene.Logger.Warning($"Missing model for {nameof(Collider)}");
+                EntitySystem.Scene.Logger.Warning("Missing model for {Class} ({Entity}) collider", Entity.ClassName, Entity);
             }
         }
 

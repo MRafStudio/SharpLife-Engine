@@ -1065,11 +1065,18 @@ namespace SharpLife.Engine.Physics
                     return;
                 }
 
-                if (clip.PassEntity != null
-                    && (ReferenceEquals(pEntity.Owner, clip.PassEntity)
-                    || ReferenceEquals(clip.PassEntity.Owner, pEntity)))
+                if (clip.PassEntity != null)
                 {
-                    continue;
+                    //Skip the entity that is being moved, and entities owned by each other.
+                    //Both owners are often null, so comparing them directly would match every
+                    //brush entity and make walls non-solid.
+                    var passEntity = clip.PassEntity.Entity;
+
+                    if ((pEntity.Owner != null && ReferenceEquals(pEntity.Owner, passEntity))
+                        || (clip.PassEntity.Owner != null && ReferenceEquals(clip.PassEntity.Owner, pEntity.Entity)))
+                    {
+                        continue;
+                    }
                 }
 
                 Trace trace;
