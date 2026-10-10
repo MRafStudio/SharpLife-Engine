@@ -58,6 +58,13 @@ namespace SharpLife.Game.Entities.Components
 
         private float _nextLogTime;
 
+        //AUTOTEST: seconds of automatic forward walking
+        private float _autoWalkTimer;
+
+        //AUTOTEST: enabled by SHARPLIFE_AUTOWALK=1, drives the player so collisions can be tested
+        //without synthetic key input (SDL ignores it).
+        private readonly bool _autoWalk = System.Environment.GetEnvironmentVariable("SHARPLIFE_AUTOWALK") == "1";
+
 
         public override Vector3 EyePosition
         {
@@ -80,6 +87,30 @@ namespace SharpLife.Game.Entities.Components
             }
 
             var wishDirection = forward * forwardMove + right * sideMove;
+
+            //AUTOTEST: drive the player in all four directions so collisions can be verified
+            //without relying on synthetic key input, which SDL ignores.
+            if (_autoWalk)
+            {
+                _autoWalkTimer += deltaSeconds;
+
+                if (_autoWalkTimer < 4.0f)
+                {
+                    wishDirection = Vector3.UnitX;
+                }
+                else if (_autoWalkTimer < 8.0f)
+                {
+                    wishDirection = -Vector3.UnitX;
+                }
+                else if (_autoWalkTimer < 12.0f)
+                {
+                    wishDirection = Vector3.UnitY;
+                }
+                else if (_autoWalkTimer < 16.0f)
+                {
+                    wishDirection = -Vector3.UnitY;
+                }
+            }
 
             if (wishDirection.LengthSquared() > 1f)
             {
@@ -109,8 +140,9 @@ namespace SharpLife.Game.Entities.Components
 
             var start = transform.Origin;
 
-            //TEMPORARY diagnostics: is Move even called, and what is the player state
-            if (world.Time.ElapsedTime >= _nextLogTime)
+            //Autotest mode logs the position once a second so collision checks can be verified
+            //without synthetic key input.
+            if (_autoWalk && world.Time.ElapsedTime >= _nextLogTime)
             {
                 _nextLogTime = (float)world.Time.ElapsedTime + 1.0f;
 
@@ -233,8 +265,9 @@ namespace SharpLife.Game.Entities.Components
                     Velocity.Z = 0;
                 }
             }
-            else if (trace.Fraction == 1f && !OnGround)
+            else
             {
+                //Nothing under our feet: start falling instead of gliding along at the current height
                 OnGround = false;
             }
         }

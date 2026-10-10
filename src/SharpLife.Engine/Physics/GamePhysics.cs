@@ -744,7 +744,10 @@ namespace SharpLife.Engine.Physics
                 var distanceFraction = p2f - p1f;
                 var mid = p1 + ((p2 - p1) * frac);
                 var midFraction = (distanceFraction * frac) + p1f;
-                var side = front > 0.0 ? 1 : 0;
+
+                //Quake: side = (t1 < 0) ? 1 : 0. The front half-space is children[0], so a point
+                //in front of the plane must descend into children[0].
+                var side = front < 0.0 ? 1 : 0;
 
                 if (!RecursiveHullCheck(hull, pNode.Children[side], p1f, midFraction, ref p1, ref mid, ref trace))
                 {
