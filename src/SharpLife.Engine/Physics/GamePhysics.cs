@@ -539,6 +539,11 @@ namespace SharpLife.Engine.Physics
                     i.Solids.Add(ent);
                 }
 
+                //Remember which node the collider was linked into. UnlinkEdict relies on this to
+                //remove it again; without it every relink adds another copy and the node's solid
+                //list grows without bound, slowing every trace down until the game hangs.
+                ent.Area = i;
+
                 if (touchTriggers && !_touchLinkSemaphore)
                 {
                     _touchLinkSemaphore = true;
